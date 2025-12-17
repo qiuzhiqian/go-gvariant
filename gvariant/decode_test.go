@@ -279,12 +279,7 @@ func TestVariant(t *testing.T) {
 //	ay - Root tree contents
 //	ay - Root tree metadata
 func TestOSTreeCommit(t *testing.T) {
-	data, err := os.ReadFile("testdata/commit.dat")
-	if err != nil {
-		t.Fatalf("could not read test commit data: %s", err)
-	}
-
-	type commit struct {
+	type OstreeCommit struct {
 		Metadata       []map[string]Variant
 		ParentCheckSum []uint8
 		RelatedObjects []struct {
@@ -298,11 +293,27 @@ func TestOSTreeCommit(t *testing.T) {
 		RootTreeMetadata []uint8
 	}
 
-	mayPanic := func() {
-		result := commit{}
-		err = Unmarshal(data, &result)
-		assert.Nil(t, err, "Unmarshal error")
-	}
+	parseOstreeCommit := func(file string) (OstreeCommit, error) {
+		data, err := os.ReadFile(file)
+		if err != nil {
+			return OstreeCommit{}, err
+		}
 
-	assert.NotPanics(t, mayPanic)
+		var result OstreeCommit
+		if err := Unmarshal(data, &result); err != nil {
+			return OstreeCommit{}, err
+		}
+		return result, nil
+	}
+	for _, file := range []string{"testdata/commit.dat", "testdata/data.commit"} {
+		ostreeCommit, err := parseOstreeCommit(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		timestampHost := guint64FromBE(ostreeCommit.Timestamp)
+
+		ostreeCommit.Timestamp = timestampHost
+		t.Logf("\nFull commit data: %+v\n", ostreeCommit)
+	}
 }
