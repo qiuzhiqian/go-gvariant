@@ -45,7 +45,9 @@
 package gvariant
 
 import (
+	"bytes"
 	"encoding/binary"
+	"fmt"
 	"math"
 	"reflect"
 )
@@ -54,6 +56,20 @@ import (
 type Variant struct {
 	Data   []byte
 	Format string
+}
+
+func (v Variant) String() string {
+	switch v.Format {
+	case "s":
+		return string(v.Data)
+	case "as":
+		fields := bytes.Split(v.Data, []byte{0x00})
+		return fmt.Sprintf("[%s]", bytes.Join(fields, []byte{','}))
+	case "b":
+		return fmt.Sprintf("%02X", v.Data[0])
+	default:
+		return fmt.Sprintf("Data: %v Format: %s", v.Data, v.Format)
+	}
 }
 
 func frameOffsetSizeForContainerSize(size int) int {

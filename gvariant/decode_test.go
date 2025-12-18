@@ -317,3 +317,63 @@ func TestOSTreeCommit(t *testing.T) {
 		t.Logf("\nFull commit data: %+v\n", ostreeCommit)
 	}
 }
+
+/**
+ * OSTREE_SUMMARY_GVARIANT_FORMAT:
+ *
+ * - a(s(taya{sv})) - Map of ref name -> (latest commit size, latest commit checksum, additional
+ * metadata), sorted by ref name
+ * - a{sv} - Additional metadata, at the current time the following are defined:
+ *   - key: "ostree.static-deltas", value: a{sv}, static delta name -> 32 bytes of checksum
+ *   - key: "ostree.summary.last-modified", value: t, timestamp (seconds since
+ *     the Unix epoch in UTC, big-endian) when the summary was last regenerated
+ *     (similar to the HTTP `Last-Modified` header)
+ *   - key: "ostree.summary.expires", value: t, timestamp (seconds since the
+ *     Unix epoch in UTC, big-endian) after which the summary is considered
+ *     stale and should be re-downloaded if possible (similar to the HTTP
+ *     `Expires` header)
+ *
+ * The currently defined keys for the `a{sv}` of additional metadata for each commit are:
+ *  - key: `ostree.commit.timestamp`, value: `t`, timestamp (seconds since the
+ *    Unix epoch in UTC, big-endian) when the commit was committed
+ *  - key: `ostree.commit.version`, value: `s`, the `version` value from the
+ *    commit's metadata if it was defined. Since: 2022.2
+ */
+func TestOSTreeSummary(t *testing.T) {
+	type RefData struct {
+		Size     uint64
+		Checksum []uint8
+		Metadata []map[string]Variant
+	}
+
+	type RefEntry struct {
+		Name       string
+		CommitData RefData
+	}
+
+	type OstreeSummary struct {
+		Refs               []RefEntry
+		AdditionalMetadata []map[string]Variant
+	}
+
+	parseOstreeSummary := func(file string) (OstreeSummary, error) {
+		data, err := os.ReadFile(file)
+		if err != nil {
+			return OstreeSummary{}, err
+		}
+
+		var result OstreeSummary
+		if err := Unmarshal(data, &result); err != nil {
+			return OstreeSummary{}, err
+		}
+		return result, nil
+	}
+
+	ostreeSummary, err := parseOstreeSummary("testdata/summary")
+	if err != nil {
+		t.Logf("Parse error: %v", err)
+		return
+	}
+
+	t.Logf("\nFull summary data: %+v\n", ostreeSummary)
+}
